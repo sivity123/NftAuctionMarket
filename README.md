@@ -99,12 +99,12 @@ Make sure the following are installed:
 ### Installation
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-folder>
+git clone https://github.com/sivity123/NftAuctionMarket
+cd NftAuctionMarket
 forge install
 ```
 
-If your dependencies are already committed in `lib/`, you may not need to run `forge install` again.
+If  dependencies are already committed in `lib/`, you may not need to run `forge install` again.
 
 ### Build
 
