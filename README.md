@@ -1,86 +1,228 @@
-You’re going to build a small NFT price-discovery engine, not just “an auction contract.” In practice, this project teaches how marketplaces move from fixed-price listings to competitive selling, how time changes behavior, and how custody, refunds, and settlement must stay correct under pressure.
+# NftAuctionMarket
 
-Learning objective
-The learning objective is to understand how an ERC-721 marketplace evolves once “list at fixed price and buy” is no longer enough. This project forces you to reason about state transitions, time-based logic with block.timestamp, bidder funds, auction finalization, cancellation rules, and edge-case testing around late bids and refunds.
+A Solidity-based NFT marketplace that supports both fixed-price listings and auction listings. The contract is designed for ERC721 NFTs and manages listing creation, direct purchases, auction conversion, auction purchases, cancellation flows, and view helpers for marketplace state.
 
-As a learner, this is important because it shifts you from “I can transfer NFTs” to “I can design market mechanics safely.” The real skill is not the auction idea itself; it is modeling who can act, when they can act, what value is locked, and how the system resolves fairly when many actors compete.
+## Project Scope
 
-Real-world resonance
-This resonates with real NFT markets because many collections and rare items are not sold at a flat price; they are sold through competition, urgency, and market sentiment. Your selected project brief explicitly extends a marketplace with English auctions, optional Dutch auctions, time deadlines, bidder refund behavior, and cancellation constraints, which mirrors how real NFT sale systems discover price rather than assuming it.
+This project focuses on building a marketplace contract for ERC721 assets with two sale flows:
 
-It also connects strongly to PFP collection drops. A PFP drop is usually a collection of avatar-style NFTs where the project wants demand, identity, community, and scarcity to interact; auctions become useful when some items are rarer, when supply is limited, or when the team wants the market to reveal what collectors will really pay.
+- Fixed-price listing and purchase.
+- Auction-style listing with timed price reduction.
 
-Why this matters
-This project matters because auctions expose the parts of smart contract design that fixed-price sales hide. Once bids come in over time, you must handle race conditions, refund guarantees, seller expectations, and deadline integrity, especially around “tight deadlines and last bids,” which your brief calls out directly.
+The repository is suitable for:
 
-For your growth as a protocol engineer, this is a strong learner project because it combines three core Web3 muscles: marketplace design, value custody, and adversarial testing. If you can explain and test auction behavior clearly, you are already thinking more like a smart contract engineer and less like someone only wiring standard functions together.
+- Learning Solidity marketplace design.
+- Practicing Foundry-based smart contract development and testing.
+- Understanding NFT approval checks, ownership validation, and listing lifecycle handling.
+- Extending into more advanced marketplace features like bidding, fees, royalties, and operator tooling.
 
-Analogy
-Think of what you are building as a digital auction house for collectible passes. The NFT is the painting on the wall, the marketplace is the auction room, the seller is the consignor, bidders raise paddles by committing ETH, the clock on the wall is block.timestamp, and the contract is the auctioneer that must never forget who bid highest, who must be refunded, or when the room is officially closed.
+## Features
 
-The English auction is like a live bidding war where the crowd keeps topping the last offer until time runs out. The Dutch auction is the opposite: the auctioneer starts too high and slowly lowers the asking price until someone says, “I’ll take it now,” which is why it feels more like controlled price decay than bidding competition.
+- Register NFT listings after ownership and approval checks.
+- Buy listed NFTs through direct payment.
+- Convert active listings into auctions.
+- Buy auction listings at the current auction price.
+- Update auction prices over time using a price-drop interval.
+- Cancel active listings and auction listings.
+- Preview stored listing and auction data.
+- Clear stale listing state when NFT ownership changes outside the marketplace.
 
-Blueprint
-Start with the mental model, not implementation. Your marketplace already knows fixed-price listings; now you are adding a second sale mode where an item can be in an auction lifecycle such as created, active, ended, settled, or cancelled, and each phase must tightly control who is allowed to do what.
+## Sale Flow Overview
 
-Design the protocol around a few core modules:
+### Fixed-price flow
 
-Auction creation: seller chooses NFT, sale type, timing window, and pricing rules.
+1. NFT owner approves the marketplace contract.
+2. NFT owner registers the NFT with a sale price.
+3. Buyer calls `buyListing` with enough ETH.
+4. Contract transfers the NFT to the receiver and clears the listing.
 
-Auction participation: bidders compete in English mode, or buyers accept the current price in Dutch mode.
+### Auction flow
 
-Settlement: when the auction ends, the NFT and funds move to the correct parties under valid conditions.
+1. NFT owner creates a normal listing.
+2. NFT owner converts that listing into an auction using `grantForAuction`.
+3. Auction price can be reduced over time through `updateAuctionListings`.
+4. Buyer calls `buyAuctoinListings` with enough ETH.
+5. Contract transfers the NFT and clears the auction data.
+6. This auction system follows the dutch Auction method.
 
-Protection rules: refunds, cancellation boundaries, deadline checks, and stale-auction prevention.
+## Contract Responsibilities
 
-For English auctions, your conceptual flow is:
+The `NftAuctionMarket` contract currently handles:
 
-Seller opens an auction for a specific NFT with a start and end time.
+- Listing registration.
+- Listing purchases.
+- Auction creation from an existing listing.
+- Auction purchases.
+- Auction cancellation.
+- Listing cancellation.
+- Listing and auction previews.
+- Internal cleanup of inactive or stale state.
 
-Bidders submit higher and higher bids while the auction is active.
+## Tech Stack
 
-When a new highest bid arrives, the old highest bidder must be made safely refundable.
+- **Solidity** `^0.8.24`
+- **Foundry** for build, test, and deployment workflow
+- **OpenZeppelin** contracts for:
+  - `Ownable`
+  - `AccessControl`
+  - `ReentrancyGuard`
+  - `IERC721`
+  - `Math`
+  - `Strings`
 
-After the deadline, no more bids should count unless you intentionally support anti-sniping extensions.
+## Project Structure
 
-The auction settles: highest bidder gets the NFT, seller gets proceeds, protocol fee logic can later be added.
+Example structure:
 
-For Dutch auctions, the flow is conceptually different:
+```text
+.
+├── src/
+│   └── NftAuctionMarket.sol
+├── test/
+├── script/
+├── lib/
+├── foundry.toml
+└── README.md
+```
 
-Seller starts at a high opening price.
+## Getting Started
 
-Price falls with time according to a rule you define.
+### Prerequisites
 
-The first buyer willing to accept the current price wins immediately.
+Make sure the following are installed:
 
-After purchase, the auction is over and cannot keep decaying.
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- Git
+- A code editor such as VS Code
+- An RPC URL and funded wallet for live deployment
 
-What this teaches you in protocol terms:
+### Installation
 
-English auction teaches competitive bidding and refund safety.
+```bash
+git clone <your-repo-url>
+cd <your-repo-folder>
+forge install
+```
 
-Dutch auction teaches time-based pricing and deterministic price calculation.
+If your dependencies are already committed in `lib/`, you may not need to run `forge install` again.
 
-Both together teach that “selling an NFT” is really about market structure, not just token transfer.
+### Build
 
-For PFP collections, this resonates in a few ways:
+```bash
+forge build
+```
 
-Common items may be fixed-price minted, while rare grails or special editions fit auctions better.
+### Test
 
-Auctions create social proof and urgency, which are strong forces in community-driven NFT markets.
+```bash
+forge test
+```
 
-Dutch auctions are often used in drops to avoid instant gas wars and let price discover downward until demand meets supply.
+For verbose traces:
 
-As a learner, your real objective is broader than finishing Project 5. You are training yourself to think in protocol layers: asset ownership, sale rules, money flow, timing assumptions, user incentives, and failure handling.
+```bash
+forge test -vvv
+```
 
-Your blueprint for development should therefore be:
+### Format
 
-First, define auction states and invariants in plain English.
+```bash
+forge fmt
+```
 
-Second, map every user action to a valid phase: create, bid, buy-now in Dutch mode, cancel, finalize, withdraw refund.
+### Deploy
 
-Third, define all failure cases before coding: expired auction, underbid, unauthorized cancellation, duplicate settlement, bid at the boundary timestamp, and refund edge cases.
+Example deployment command:
 
-Fourth, write tests that behave like real users competing under time pressure, because your brief specifically emphasizes bids, refunds, cancellations, and deadline edges.
+1) `Sepolia` In Order to deploy the contract to sepolia you must have you sepolia wallet address in you .env file as `SEPOLIA_PRIMARY_ADDRESS`, for the script to load your address and use it at the time of deployment.
 
-A good learner mindset here is: “I am not building an NFT feature; I am building a small market with rules.” That framing will make your architecture cleaner and your tests much sharper.
+2) For `Anvil` you can just deploy as your anvil running, for that you should run `anvil` in your terminal and must copy the `rpc_endpoint` and format it like `http://127.0.0.1:8545` while pasting in `--rpc-url`.
+
+
+```bash
+forge script \
+script/DeployNftAuctionMarket.s.sol:DeployNftAuctionMarket \
+  --rpc-url <RPC_URL> \
+  --private-key <PRIVATE_KEY> \
+  --broadcast 
+```
+
+## Basic Usage
+
+### 1. Approve the marketplace
+
+Approve the marketplace contract from your ERC721 contract before listing the NFT.
+
+### 2. Register a listing
+
+Call:
+
+```solidity
+registerListings(address _nft, uint256 _tokenId, uint256 _price)
+```
+
+### 3. Buy a fixed-price listing
+
+Call:
+
+```solidity
+buyListing(address _to, uint256 _listingId)
+```
+
+Send at least the listed price as `msg.value`.
+
+### 4. Convert listing to auction
+
+Call:
+
+```solidity
+grantForAuction(
+    uint256 _listingId,
+    uint256 _auctionPrice,
+    uint256 _minAuctionPrice,
+    uint256 _totalDuration,
+    uint256 _durationForPriceDrop,
+    uint256 _priceDropPercentage
+)
+```
+
+### 5. Update auction price
+
+Call:
+
+```solidity
+updateAuctionListings()
+```
+
+### 6. Buy an auction listing
+*** Follows the dutch auction method ***
+Call:
+
+```solidity
+buyAuctoinListings(uint256 _auctionId)
+```
+
+Send at least the current auction price as `msg.value`.
+
+## Notes
+
+- The marketplace only works with ERC721 NFTs.
+- The NFT must remain approved to the marketplace for transfer operations.
+- Overpayment is refunded back to the sender.
+- If ownership changes outside the marketplace, stale listing state can be cleared during buy operations.
+- Auction pricing follows the values configured at auction creation.
+
+## Future Improvements
+
+This project can be extended with:
+
+- Bid-based auctions.
+- Marketplace fees.
+- Royalty support.
+- Better event indexing and analytics support.
+- Frontend integration.
+- More complete test coverage for edge cases.
+
+## License
+
+MIT
